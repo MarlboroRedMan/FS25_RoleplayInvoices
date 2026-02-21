@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modDesc descVersion="106">
+    <title>Roleplay Invoices</title>
+    <description>
+        RP-first invoicing and phone system for multiplayer.
+        Send invoices between farms for rent, leases, services, and vehicle sales.
+        Ping players, manage contacts, and track payments.
+    </description>
+
+    <version>0.1.0</version>
+    <author>MRM</author>
+    <iconFilename>icon.png</iconFilename>
+
+    <extraSourceFiles>
+        <sourceFile filename="scripts/Invoice.lua"/>
+        <sourceFile filename="scripts/InvoiceManager.lua"/>
+        <sourceFile filename="scripts/InvoiceSave.lua"/>
+        <sourceFile filename="scripts/InvoiceEvents.lua"/>
+        <sourceFile filename="scripts/RoleplayPhone.lua"/>
+    </extraSourceFiles>
+
+    <l10n filenamePrefix="localization/l10n"/>
+</modDesc>
