@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<l10n>
+    <text name="invoices_title" text="Invoices"/>
+    <text name="inbox" text="Inbox"/>
+    <text name="outbox" text="Outbox"/>
+    <text name="create_invoice" text="Create Invoice"/>
+    <text name="close" text="Close"/>
+
+    <text name="category" text="Category"/>
+    <text name="amount" text="Amount"/>
+    <text name="send_invoice" text="Send Invoice"/>
+</l10n>
