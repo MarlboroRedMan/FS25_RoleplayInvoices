@@ -37,7 +37,7 @@ Best experienced on a **dedicated server**. Player-hosted multiplayer functional
 
 ## Status
 
-🚧 **Work in Progress** — Contacts and Ping screens coming soon
+🚧 **Work in Progress** — Will continue making it better 
 
 | Feature | Status |
 |---|---|
