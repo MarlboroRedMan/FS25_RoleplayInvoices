@@ -15,6 +15,32 @@
 
 ## 🔧 v0.2.0 — Planned
 
+### 🔔 Custom Notification System *(Build First — Everything Else Plugs Into This)*
+- Custom on-screen notification UI, positioned in the same general area as the default FS25 notification but nudged down slightly to avoid overlap
+- Color coded by type so players instantly know what kind of notification it is:
+  - 🟢 Green — Invoice paid, search found, credit score up
+  - 🔴 Red — Invoice rejected, payment missed, credit score down
+  - 🔵 Blue — New invoice received, new message
+  - 🟡 Yellow — Payment due soon, lease expiring, search failed
+- Small icon indicating notification type
+- Stacks cleanly if multiple notifications arrive at once
+- Fade in/out animation, auto-dismisses after a few seconds
+- Centralized notification manager — any part of the mod calls one function to trigger a notification
+- Built first so every v0.2.0 feature and future UsedPlus integration just plugs straight in
+
+**Notifications planned across all features:**
+- New invoice received
+- Invoice paid / rejected
+- New ping received
+- New message received *(when messaging is built)*
+- Credit score changed *(UsedPlus integration)*
+- Vehicle search completed — found or failed *(UsedPlus integration)*
+- Loan payment due soon *(UsedPlus integration)*
+- Loan payment missed *(UsedPlus integration)*
+- Lease expiring soon *(UsedPlus integration)*
+
+---
+
 ### Weather App
 - Tap a weather icon on the home screen to open a dedicated app
 - Show current conditions (temperature, weather, season)
@@ -49,7 +75,7 @@
 ### In-Game Messaging
 - Send text messages between farms
 - View conversation threads per farm
-- New message notification
+- New message notification (via custom notification system)
 - Uses existing network event system as foundation
 - *(Complex — likely needs its own development sprint)*
 
@@ -76,12 +102,14 @@ UsedPlus (github.com/XelaNull/FS25_UsedPlus) is a comprehensive finance and mark
 - Display farm's current FICO-style credit score (300-850)
 - Show score history and what's affecting it
 - Paying invoices through our mod reports payments to UsedPlus and builds credit
+- Credit score change triggers custom notification (up = green, down = red)
 - Via UsedPlusAPI.getCreditScore(farmId)
 
 ### Finance Manager App
 - View all active loans, leases, and financing deals
 - See monthly payments, remaining balances, and terms
 - Make payments directly from the phone
+- Payment due soon / missed triggers custom notification
 - Via UsedPlus Finance Manager API
 
 ### Cash Loans App
@@ -101,7 +129,6 @@ UsedPlus (github.com/XelaNull/FS25_UsedPlus) is a comprehensive finance and mark
 ## 💭 Future / Maybe Someday
 
 - Sequential invoice numbering
-- In-game notification when a new invoice arrives
 - Controller support
 - Giants ModHub submission for console availability
 
