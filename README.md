@@ -2,7 +2,7 @@
 
 A Farming Simulator 25 mod that adds a roleplay phone UI for managing invoices between farms on multiplayer servers. Built for serious RP communities that want an in-game economy with real accountability.
 
-> 🎮 **PC Only** — This mod uses Lua scripts and cannot run on console versions of FS25 (PlayStation or Xbox). PC/Mac only.
+ 🎮 **PC Only** — This mod uses Lua scripts and cannot run on console versions of FS25 (PlayStation or Xbox). PC/Mac only.
 ---
 
 ## Features
