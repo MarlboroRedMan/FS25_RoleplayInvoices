@@ -44,9 +44,9 @@ Best experienced on a **dedicated server**. Player-hosted multiplayer functional
 | Phone UI | ✅ Complete |
 | Invoice System | ✅ Complete |
 | Save/Load | ✅ Complete |
-| Contacts | 🔜 Coming Soon |
-| Ping System | 🔜 Coming Soon |
-| Full MP Sync | 🔜 Coming Soon |
+| Contacts | ✅ Complete |
+| Ping System | ✅ Complete |
+| Full MP Sync | ✅ Complete |
 
 ## Credits
 
