@@ -2,7 +2,6 @@
 
 A Farming Simulator 25 mod that adds a roleplay phone UI for managing invoices between farms on multiplayer servers. Built for serious RP communities that want an in-game economy with real accountability.
 
- 🎮 **PC Only** — This mod uses Lua scripts and cannot run on console versions of FS25 (PlayStation or Xbox). PC/Mac only.
 ---
 
 ## Features
@@ -95,6 +94,22 @@ Press **F7** to toggle the phone open and closed from anywhere in-game.
 - Invoice IDs are randomly generated; no sequential numbering yet
 - No in-game notification when a new invoice is received (coming soon)
 - Phone UI is keyboard/mouse only; controller support not planned
+
+---
+
+## 🤖 AI-Assisted Development
+
+This mod was developed collaboratively between a human creator and Claude (Anthropic AI).
+The vision, direction, design decisions, and testing were all driven by MarlboroRedMan —
+Claude handled the code implementation based on those ideas.
+
+### Codebase Statistics
+- **2,411 lines of code** across 6 Lua scripts
+- **14 total mod files** (6 Lua • 2 XML • 5 textures • 1 localization)
+- **4 core systems** — Invoice, Contact, Save, and Network Events
+- **1 network event module** for full multiplayer sync
+- **1 persistent save/load system** integrated with FS25's save cycle
+- Developed February 2026
 
 ---
 
