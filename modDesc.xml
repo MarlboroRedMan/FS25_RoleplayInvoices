@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <modDesc descVersion="106">
-        <title>Roleplay Invoices</title>
-        <description>
+	<title>Roleplay Invoices</title>
+	<description>
                     Created by MarlboroRedMan and Claude (Anthropic)
 
                     A multiplayer-ready invoicing and communication system for Farming Simulator 25 roleplay servers. Send invoices between farms, track payments, and ping other players - all from your in-game phone.
@@ -30,20 +30,18 @@
                     MULTIPLAYER
                     All invoices and farm data sync automatically when a player connects. Invoices sent to offline farms will be waiting in their inbox when they join.
         </description>
-
-        <version>0.1.0</version>
-        <author>MarlboroRedMan and Claude (Anthropic)</author>
-        <iconFilename>textures/icon.dds</iconFilename>
-        <multiplayer supported="true"/>
-
-        <extraSourceFiles>
-                    <sourceFile filename="scripts/Invoice.lua"/>
-                    <sourceFile filename="scripts/InvoiceManager.lua"/>
-                    <sourceFile filename="scripts/InvoiceSave.lua"/>
-                    <sourceFile filename="scripts/InvoiceEvents.lua"/>
-                    <sourceFile filename="scripts/ContactManager.lua"/>
-                    <sourceFile filename="scripts/RoleplayPhone.lua"/>
-        </extraSourceFiles>
-
-        <l10n filenamePrefix="localization/l10n"/>
+	<version>0.1.1</version>
+	<author>MarlboroRedMan and Claude (Anthropic)</author>
+	<iconFilename>textures/icon.dds</iconFilename>
+	<multiplayer supported="true"/>
+	<extraSourceFiles>
+		<sourceFile filename="scripts/Invoice.lua"/>
+		<sourceFile filename="scripts/InvoiceManager.lua"/>
+		<sourceFile filename="scripts/InvoiceSave.lua"/>
+		<sourceFile filename="scripts/InvoiceEvents.lua"/>
+		<sourceFile filename="scripts/ContactManager.lua"/>
+		<sourceFile filename="scripts/NotificationManager.lua"/>
+		<sourceFile filename="scripts/RoleplayPhone.lua"/>
+	</extraSourceFiles>
+	<l10n filenamePrefix="localization/l10n"/>
 </modDesc>
