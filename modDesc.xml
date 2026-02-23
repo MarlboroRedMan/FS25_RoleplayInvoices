@@ -31,7 +31,7 @@
 
         <version>0.1.0</version>
         <author>MarlboroRedMan and Claude (Anthropic)</author>
-        <iconFilename>icon.dds</iconFilename>
+        <iconFilename>textures/icon.dds</iconFilename>
         <multiplayer supported="true"/>
 
         <extraSourceFiles>
