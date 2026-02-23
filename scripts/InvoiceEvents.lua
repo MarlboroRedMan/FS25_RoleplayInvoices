@@ -92,10 +92,14 @@ function RI_SendInvoiceEvent:run(connection)
         print(string.format("[InvoiceEvents] Invoice check: myFarmId=%d toFarmId=%d",
             myFarmId, self.invoice.toFarmId or -1))
         if self.invoice.toFarmId == myFarmId then
-            g_currentMission:addIngameNotification(
-                FSBaseMission.INGAME_NOTIFICATION_OK,
-                string.format("New invoice from Farm %d  -  $%s",
-                    self.invoice.fromFarmId,
+            local fromName = "Farm " .. tostring(self.invoice.fromFarmId)
+            if g_currentMission and g_currentMission.farmManager then
+                local ff = g_currentMission.farmManager:getFarmById(self.invoice.fromFarmId)
+                if ff and ff.name then fromName = ff.name end
+            end
+            NotificationManager:push("invoice",
+                string.format("From %s  $%s",
+                    fromName,
                     tostring(math.floor(self.invoice.amount or 0))))
         end
     end
@@ -208,9 +212,13 @@ function RI_PingEvent:run(connection)
     print(string.format("[InvoiceEvents] Ping check: myFarmId=%d toFarmId=%d",
         myFarmId, self.toFarmId or -1))
     if self.toFarmId == 0 or self.toFarmId == myFarmId then
-        g_currentMission:addIngameNotification(
-            FSBaseMission.INGAME_NOTIFICATION_OK,
-            string.format("PING from Farm %d: %s", self.fromFarmId, self.message))
+        local fromName = "Farm " .. tostring(self.fromFarmId)
+        if g_currentMission and g_currentMission.farmManager then
+            local ff = g_currentMission.farmManager:getFarmById(self.fromFarmId)
+            if ff and ff.name then fromName = ff.name end
+        end
+        NotificationManager:push("ping",
+            string.format("%s: %s", fromName, self.message))
     end
 
     print(string.format("[InvoiceEvents] Ping Farm %d -> Farm %d: %s",

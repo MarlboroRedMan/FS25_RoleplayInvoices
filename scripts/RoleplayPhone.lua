@@ -93,6 +93,28 @@ function RoleplayPhone:init()
     else
         print("[RoleplayPhone] Initialized OK")
     end
+
+    -- Init notification system — shares our white overlay for drawing
+    NotificationManager:init(self.whiteOverlay, modDirectory)
+end
+
+function RoleplayPhone:loadSavedData()
+    if g_server == nil then return end
+    if not g_currentMission or not g_currentMission.missionInfo then return end
+    local dir = g_currentMission.missionInfo.savegameDirectory
+    if not dir then return end
+
+    local filename = dir .. "/roleplayInvoices.xml"
+    local xmlFile  = loadXMLFile("roleplayInvoicesXML", filename)
+    if xmlFile and xmlFile ~= 0 then
+        InvoiceSave:loadFromXML(xmlFile, "roleplayInvoices")
+        delete(xmlFile)
+        local count = 0
+        for _ in pairs(InvoiceManager.invoices) do count = count + 1 end
+        print(string.format("[RoleplayPhone] Loaded %d invoices from disk", count))
+    else
+        print("[RoleplayPhone] No saved invoices found (new save or first run)")
+    end
 end
 
 -- ─── Open / Close ─────────────────────────────────────────────────────────────
@@ -105,6 +127,27 @@ function RoleplayPhone:toggle()
         if g_currentMission.player then
             g_currentMission.player:setMovementEnabled(false)
         end
+
+        -- On first open after connecting, check for pending invoices and notify
+        if self.pendingInboxCheck then
+            self.pendingInboxCheck = false
+            local myFarmId = self:getMyFarmId()
+            local unpaid = 0
+            for _, inv in pairs(InvoiceManager.invoices) do
+                if inv.toFarmId == myFarmId and inv.status == "PENDING" then
+                    unpaid = unpaid + 1
+                end
+            end
+            if unpaid > 0 then
+                local msg = unpaid == 1
+                    and "You have 1 unpaid invoice."
+                    or  string.format("You have %d unpaid invoices.", unpaid)
+                NotificationManager:push("info", msg)
+            end
+        end
+
+        -- Clear badge when phone opens
+        NotificationManager:clearBadge()
         print("[RoleplayPhone] Opened")
     else
         self:close()
@@ -144,7 +187,6 @@ function RoleplayPhone:getMyFarmId()
         local farm = g_farmManager:getFarmByUserId(g_currentMission.playerUserId)
         if farm and farm.farmId and farm.farmId > 0 then
             farmId = farm.farmId
-            print(string.format("[RoleplayPhone] getMyFarmId via playerUserId: %d", farmId))
         end
     end
     -- Fallback 1: playerFarmId (works on host, may be nil on client)
@@ -160,7 +202,6 @@ function RoleplayPhone:getMyFarmId()
     end
 
     if not farmId then
-        print("[RoleplayPhone] getMyFarmId: all lookups failed, returning 1")
         farmId = 1
     end
 
@@ -251,18 +292,15 @@ end
 
 -- ─── Get farms helper ─────────────────────────────────────────────────────────
 function RoleplayPhone:getAvailableFarms()
-    -- Return cached list if still fresh (60 seconds) - avoid reading XML every frame
-    -- but allow it to rebuild after init so correct myFarmId is used for filtering
-    local now = getTimeSec()
-    if self._farmCache and #self._farmCache > 0
-    and self._farmCacheTime and (now - self._farmCacheTime) < 60 then
+    -- Return cached list if available - cache is cleared every time phone opens
+    -- so this only persists during a single open session, not across opens
+    if self._farmCache and #self._farmCache > 0 then
         return self._farmCache
     end
 
     local result = {}
 
-    -- Host only: read from farms.xml so offline/empty farms are included
-    -- Clients don't have the host's savegame locally so skip XML read for them
+    -- Host: read from farms.xml so ALL farms (even offline) are included
     if g_server ~= nil and g_currentMission and g_currentMission.missionInfo then
         local dir = g_currentMission.missionInfo.savegameDirectory
         if dir then
@@ -287,7 +325,14 @@ function RoleplayPhone:getAvailableFarms()
         end
     end
 
-    -- Clients (or fallback): use farmManager for currently connected farms
+    -- Client: use knownFarms sent by host on connect (includes offline farms)
+    if #result == 0 and self.knownFarms and #self.knownFarms > 0 then
+        for _, farm in ipairs(self.knownFarms) do
+            table.insert(result, farm)
+        end
+    end
+
+    -- Last resort fallback: farmManager (only online farms)
     if #result == 0 and g_currentMission and g_currentMission.farmManager then
         for _, farm in pairs(g_currentMission.farmManager:getFarms()) do
             if farm.farmId ~= FarmManager.SPECTATOR_FARM_ID then
@@ -304,19 +349,36 @@ function RoleplayPhone:getAvailableFarms()
     end
     table.sort(result, function(a, b) return a.farmId < b.farmId end)
 
-    -- Cache the result so we don't re-read every frame
+    -- Cache the result for this open session (cleared when phone opens)
     self._farmCache = result
-    self._farmCacheTime = getTimeSec()
     return result
 end
 
 function RoleplayPhone:clearFarmCache()
     self._farmCache = nil
-    self._farmCacheTime = nil
+end
+
+function RoleplayPhone:getFarmName(farmId)
+    if not farmId then return "Unknown" end
+    -- Try farmManager first (online farms)
+    if g_currentMission and g_currentMission.farmManager then
+        local f = g_currentMission.farmManager:getFarmById(farmId)
+        if f and f.name and f.name ~= "" then return f.name end
+    end
+    -- Fall back to knownFarms (sent by host on connect, includes offline farms)
+    if self.knownFarms then
+        for _, f in ipairs(self.knownFarms) do
+            if f.farmId == farmId then return f.name end
+        end
+    end
+    return "Farm " .. tostring(farmId)
 end
 
 -- ─── Main draw dispatcher ─────────────────────────────────────────────────────
 function RoleplayPhone:draw()
+    -- HUD icon and popups always draw, even when phone is closed
+    NotificationManager:draw()
+
     if self.state == self.STATE.CLOSED then return end
     self.hitboxes = {}  -- clear hitboxes each frame
 
@@ -716,15 +778,9 @@ function RoleplayPhone:drawInvoiceDetail()
         renderText(fieldX + 0.010, curY + 0.008, 0.013, tostring(value or "-"))
     end
 
-    -- Get farm names
-    local fromName = "Farm " .. tostring(inv.fromFarmId or "?")
-    local toName   = "Farm " .. tostring(inv.toFarmId or "?")
-    if g_currentMission and g_currentMission.farmManager then
-        local ff = g_currentMission.farmManager:getFarmById(inv.fromFarmId)
-        local tf = g_currentMission.farmManager:getFarmById(inv.toFarmId)
-        if ff and ff.name then fromName = ff.name end
-        if tf and tf.name then toName   = tf.name end
-    end
+    -- Get farm names - check farmManager first, then knownFarms for offline farms
+    local fromName = self:getFarmName(inv.fromFarmId)
+    local toName   = self:getFarmName(inv.toFarmId)
 
     drawDetail("FROM",        fromName)
     drawDetail("TO",          toName)
@@ -835,27 +891,37 @@ function RoleplayPhone:drawCreateInvoice()
 
     -- ── Amount field ──
     curY = curY - fldH - 0.008
-    self:drawField("field_amount", col1X, curY, colW, fldH,
+    local clrW = 0.028
+    local clrGap = 0.005
+    self:drawField("field_amount", col1X, curY, colW - clrW - clrGap, fldH,
                    "AMOUNT ($)", self.form.amount,
                    self.form.activeField == "amount")
+    self:drawButton("clear_amount", col1X + colW - clrW, curY + (fldH-0.026)/2, clrW, 0.026,
+                    "X", 0.45, 0.12, 0.12, 0.011)
 
     -- ── Due Date field ──
     curY = curY - fldH - 0.008
-    self:drawField("field_dueDate", col1X, curY, colW, fldH,
+    self:drawField("field_dueDate", col1X, curY, colW - clrW - clrGap, fldH,
                    "DUE DATE (e.g. Day 45)", self.form.dueDate,
                    self.form.activeField == "dueDate")
+    self:drawButton("clear_dueDate", col1X + colW - clrW, curY + (fldH-0.026)/2, clrW, 0.026,
+                    "X", 0.45, 0.12, 0.12, 0.011)
 
     -- ── Description field ──
     curY = curY - fldH - 0.008
-    self:drawField("field_description", col1X, curY, colW, fldH,
+    self:drawField("field_description", col1X, curY, colW - clrW - clrGap, fldH,
                    "DESCRIPTION", self.form.description,
                    self.form.activeField == "description")
+    self:drawButton("clear_description", col1X + colW - clrW, curY + (fldH-0.026)/2, clrW, 0.026,
+                    "X", 0.45, 0.12, 0.12, 0.011)
 
     -- ── Notes field ──
     curY = curY - fldH - 0.008
-    self:drawField("field_notes", col1X, curY, colW, fldH,
+    self:drawField("field_notes", col1X, curY, colW - clrW - clrGap, fldH,
                    "Notes (job details / agreement)", self.form.notes,
                    self.form.activeField == "notes")
+    self:drawButton("clear_notes", col1X + colW - clrW, curY + (fldH-0.026)/2, clrW, 0.026,
+                    "X", 0.45, 0.12, 0.12, 0.011)
 
     -- ── Send button ──
     local sendY = py + 0.015
@@ -957,6 +1023,11 @@ function RoleplayPhone:onHitboxClicked(hb)
     if hb.id == "field_notes"       then self.form.activeField = "notes";       return end
     if hb.id == "field_dueDate"     then self.form.activeField = "dueDate";     return end
 
+    if hb.id == "clear_amount"      then self.form.amount      = ""; self.form.activeField = "amount";      return end
+    if hb.id == "clear_dueDate"     then self.form.dueDate     = ""; self.form.activeField = "dueDate";     return end
+    if hb.id == "clear_description" then self.form.description = ""; self.form.activeField = "description"; return end
+    if hb.id == "clear_notes"       then self.form.notes       = ""; self.form.activeField = "notes";       return end
+
     -- Send invoice
     if hb.id == "btn_send_invoice" then
         self:submitInvoice()
@@ -992,9 +1063,7 @@ function RoleplayPhone:onHitboxClicked(hb)
                     InvoiceEvents.UpdateInvoiceEvent.new(inv.id, "REJECTED"))
             end
             RoleplayPhone:saveInvoices()
-            g_currentMission:addIngameNotification(
-                FSBaseMission.INGAME_NOTIFICATION_OK,
-                "Invoice rejected.")
+            NotificationManager:push("rejected", "Invoice #" .. string.format("%04d", inv.id) .. " rejected.")
             print("[RoleplayPhone] Invoice rejected: #" .. tostring(inv.id))
         end
         return
@@ -1005,30 +1074,33 @@ function RoleplayPhone:onHitboxClicked(hb)
         local inv = self.selectedInvoice
         local amount = inv.amount or 0
         local myFarmId = self:getMyFarmId()
-        if g_currentMission and g_currentMission.economyManager and g_currentMission.farmManager then
-            local farm = g_currentMission.farmManager:getFarmById(myFarmId)
+        local farmManager = g_currentMission and g_currentMission.farmManager or g_farmManager
+        if farmManager then
+            local farm = farmManager:getFarmById(myFarmId)
             if farm and farm.money >= amount then
-                g_currentMission.economyManager:updateFarmMoney(myFarmId, -amount,
-                    EconomyManager.MONEY_TYPE_OTHER, nil, nil)
-                inv.status = "PAID"
+                -- Route through server event so money transfer happens authoritatively
                 if g_server ~= nil then
+                    -- Host paying: run directly
+                    g_currentMission:addMoney(-amount, myFarmId, MoneyType.OTHER, true, true)
+                    g_currentMission:addMoney(amount, inv.fromFarmId, MoneyType.OTHER, true, true)
+                    inv.status = "PAID"
                     g_server:broadcastEvent(
                         InvoiceEvents.UpdateInvoiceEvent.new(inv.id, "PAID"))
+                    RoleplayPhone:saveInvoices()
                 elseif g_client ~= nil then
+                    -- Client paying: ask server to do the transfer
+                    inv.status = "PAID"  -- optimistic local update
                     g_client:getServerConnection():sendEvent(
-                        InvoiceEvents.UpdateInvoiceEvent.new(inv.id, "PAID"))
+                        RI_PayInvoiceEvent.new(inv.id, inv.fromFarmId, myFarmId, amount))
                 end
                 RoleplayPhone:saveInvoices()
-                g_currentMission:addIngameNotification(
-                    FSBaseMission.INGAME_NOTIFICATION_OK,
+                NotificationManager:push("paid",
                     string.format("Paid $%s to %s",
                         self:formatMoney(amount),
-                        "Farm " .. tostring(inv.fromFarmId)))
+                        self:getFarmName(inv.fromFarmId)))
                 print("[RoleplayPhone] Invoice paid: #" .. tostring(inv.id))
             else
-                g_currentMission:addIngameNotification(
-                    FSBaseMission.INGAME_NOTIFICATION_CRITICAL,
-                    "Insufficient funds to pay this invoice.")
+                NotificationManager:push("rejected", "Insufficient funds to pay this invoice.")
             end
         end
         return
@@ -1116,6 +1188,12 @@ function RoleplayPhone:onHitboxClicked(hb)
         return
     end
 
+    if hb.id == "clear_ping_message" then
+        self.pingForm.customMessage = ""
+        self.pingForm.activeField = "customMessage"
+        return
+    end
+
     if hb.id == "btn_send_ping" then
         self:submitPing()
         return
@@ -1126,9 +1204,7 @@ end
 function RoleplayPhone:submitInvoice()
     local amount = tonumber(self.form.amount)
     if not amount or amount <= 0 then
-        g_currentMission:addIngameNotification(
-            FSBaseMission.INGAME_NOTIFICATION_CRITICAL,
-            "Please enter a valid amount.")
+        NotificationManager:push("rejected", "Enter a valid amount.")
         return
     end
 
@@ -1137,16 +1213,12 @@ function RoleplayPhone:submitInvoice()
     local myFarmId = self:getMyFarmId()
 
     if not toFarm then
-        g_currentMission:addIngameNotification(
-            FSBaseMission.INGAME_NOTIFICATION_CRITICAL,
-            "No recipient farm selected.")
+        NotificationManager:push("rejected", "No recipient farm selected.")
         return
     end
 
     if toFarm.farmId == myFarmId then
-        g_currentMission:addIngameNotification(
-            FSBaseMission.INGAME_NOTIFICATION_CRITICAL,
-            "You cannot send an invoice to your own farm.")
+        NotificationManager:push("rejected", "Can't invoice your own farm.")
         return
     end
 
@@ -1175,8 +1247,9 @@ function RoleplayPhone:submitInvoice()
 
     -- Route through sendEvent in all cases so server run() fires correctly
     if g_client ~= nil then
-        -- MP: send to server, server run() fires and rebroadcasts
-        -- saveInvoices is called inside RI_SendInvoiceEvent:run() after invoice is added
+        -- MP: add locally first so sender's outbox is populated immediately
+        -- then send to server so it saves and broadcasts to other clients
+        InvoiceManager:addInvoice(invoice)
         g_client:getServerConnection():sendEvent(
             InvoiceEvents.SendInvoiceEvent.new(invoice))
     else
@@ -1185,10 +1258,8 @@ function RoleplayPhone:submitInvoice()
         RoleplayPhone:saveInvoices()
     end
 
-    g_currentMission:addIngameNotification(
-        FSBaseMission.INGAME_NOTIFICATION_OK,
-        string.format("Invoice sent to %s for $%s",
-            toFarm.name, self:formatMoney(amount)))
+    NotificationManager:push("info",
+        string.format("Sent $%s to %s", self:formatMoney(amount), toFarm.name))
 
     print("[RoleplayPhone] Invoice created: #" .. tostring(newId))
 
@@ -1635,9 +1706,7 @@ function RoleplayPhone:submitPing()
     if isCustom then
         message = self.pingForm.customMessage
         if not message or message == "" then
-            g_currentMission:addIngameNotification(
-                FSBaseMission.INGAME_NOTIFICATION_CRITICAL,
-                "Please type a message before sending.")
+            NotificationManager:push("rejected", "Type a message before sending.")
             return
         end
     else
@@ -1655,9 +1724,7 @@ function RoleplayPhone:submitPing()
             InvoiceEvents.PingEvent.new(myFarmId, farm.farmId, message))
     else
         -- Single player fallback
-        g_currentMission:addIngameNotification(
-            FSBaseMission.INGAME_NOTIFICATION_OK,
-            string.format("PING >> %s: %s", farm.name, message))
+        NotificationManager:push("ping", string.format("PING >> %s: %s", farm.name, message))
     end
 
     print(string.format("[RoleplayPhone] Ping sent to %s: %s", farm.name, message))
@@ -1771,11 +1838,17 @@ function RoleplayPhone:drawPing()
     -- Custom message input (only when last preset selected)
     if isCustomSelected then
         cy = cy - 0.008
+        local clrW = 0.028
+        local clrGap = 0.005
+        local fldW = pw - 0.036
         self:drawField("ping_custom_field",
-            px + 0.018, cy - 0.044, pw - 0.036, 0.044,
+            px + 0.018, cy - 0.044, fldW - clrW - clrGap, 0.044,
             "Type your message",
             self.pingForm.customMessage,
             self.pingForm.activeField == "customMessage")
+        self:drawButton("clear_ping_message",
+            px + 0.018 + fldW - clrW, cy - 0.044 + (0.044 - 0.026)/2, clrW, 0.026,
+            "X", 0.45, 0.12, 0.12, 0.011)
         cy = cy - 0.044 - 0.008
     end
 
@@ -1821,7 +1894,6 @@ Mission00.mouseEvent = Utils.appendedFunction(Mission00.mouseEvent,
     end)
 
 local _phoneKeyListener = {}
-
 function _phoneKeyListener:keyEvent(unicode, sym, modifier, isDown)
     RoleplayPhone:keyEvent(unicode, sym, modifier, isDown)
 end
@@ -1833,13 +1905,14 @@ function _phoneKeyListener:saveToXMLFile(xmlFilename, key, usedModNames)
 end
 
 function _phoneKeyListener:loadFromXMLFile(xmlFilename, key)
-    -- Loading is handled in RoleplayPhone:init() via Mission00.loadMap hook
+    -- Loading is handled in Mission00.loadMap hook via RoleplayPhone:loadSavedData()
 end
 
 addModEventListener(_phoneKeyListener)
 
 Mission00.loadMap = Utils.appendedFunction(Mission00.loadMap, function(mission, name)
     RoleplayPhone:init()
+    RoleplayPhone:loadSavedData()
 
     -- Login notification: count unpaid invoices for this farm
     local myFarmId = RoleplayPhone:getMyFarmId()
@@ -1851,9 +1924,46 @@ Mission00.loadMap = Utils.appendedFunction(Mission00.loadMap, function(mission, 
     end
     if unpaid > 0 then
         local msg = unpaid == 1
-            and "You have 1 unpaid invoice in your inbox."
-            or  string.format("You have %d unpaid invoices in your inbox.", unpaid)
-        g_currentMission:addIngameNotification(
-            FSBaseMission.INGAME_NOTIFICATION_OK, msg)
+            and "You have 1 unpaid invoice."
+            or  string.format("You have %d unpaid invoices.", unpaid)
+        NotificationManager:push("info", msg)
     end
 end)
+
+-- Hook into FS25's save system so our file is written as part of normal game save
+-- This prevents the game from deleting our file on exit
+Mission00.saveSavegame = Utils.appendedFunction(Mission00.saveSavegame,
+    function(mission)
+        if g_server ~= nil then
+            RoleplayPhone:saveInvoices()
+        end
+    end
+)
+
+-- When a client finishes loading, host sends them the full farm list
+-- and all existing invoices so they're fully in sync
+Mission00.onConnectionFinishedLoading = Utils.appendedFunction(
+    Mission00.onConnectionFinishedLoading,
+    function(mission, connection)
+        if g_server == nil then return end  -- only host does this
+
+        -- Send full farm list
+        local farms = RoleplayPhone:getAvailableFarms()
+        if farms and #farms > 0 then
+            connection:sendEvent(RI_FarmListEvent.new(farms))
+            print(string.format("[RoleplayPhone] Sent farm list (%d farms) to new client", #farms))
+        end
+
+        -- Send all existing invoices so client inbox is populated
+        -- showNotification=false because farmId isn't resolved yet at connect time
+        -- We send a summary notification via RI_FarmListEvent instead
+        local count = 0
+        for _, inv in pairs(InvoiceManager.invoices) do
+            connection:sendEvent(RI_SendInvoiceEvent.new(inv, false))
+            count = count + 1
+        end
+        if count > 0 then
+            print(string.format("[RoleplayPhone] Sent %d existing invoices to new client", count))
+        end
+    end
+)
