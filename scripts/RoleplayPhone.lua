@@ -1073,17 +1073,20 @@ function RoleplayPhone:drawPhoneHome()
         end
     end
 
-    -- Close hint and swipe hint — both in the grey dock area
-    setTextAlignment(RenderText.ALIGN_CENTER)
+    -- Both hints on same line — click outside left, swipe right
     setTextBold(false)
-    -- Swipe hint at top of dock (only when more than 1 page)
     if self.homePageCount > 1 then
+        setTextAlignment(RenderText.ALIGN_LEFT)
+        setTextColor(0.85, 0.87, 0.90, 0.75)
+        renderText(px + 0.006, dockY + dockH - 0.008, 0.008, "Click outside to close")
+        setTextAlignment(RenderText.ALIGN_RIGHT)
         setTextColor(0.65, 0.70, 0.80, 0.70)
-        renderText(cx, dockY + dockH - 0.008, 0.009, "< > or tap arrows to switch pages")
+        renderText(px + pw - 0.006, dockY + dockH - 0.008, 0.008, "< > switch pages")
+    else
+        setTextAlignment(RenderText.ALIGN_CENTER)
+        setTextColor(0.85, 0.87, 0.90, 0.75)
+        renderText(cx, dockY + dockH - 0.008, 0.008, "Click outside to close")
     end
-    -- Close hint just above the icons
-    setTextColor(0.85, 0.87, 0.90, 0.75)
-    renderText(cx, dockY + 0.094, 0.008, "Click outside to close")
 end
 
 -- ─── Weather widget (page 1 center) ──────────────────────────────────────────
@@ -2270,7 +2273,8 @@ function RoleplayPhone:drawContacts()
     local pw = s.w
     local ph = s.h
 
-    -- Phone shell background
+    -- Phone bezel + shell background
+    self:drawRect(px-0.009, py-0.009, pw+0.018, ph+0.018, 0.01, 0.01, 0.01, 1.0)
     self:drawRect(px, py, pw, ph, 0.06, 0.07, 0.10, 0.97)
 
     local contentY = py + ph - 0.012
@@ -2881,7 +2885,8 @@ function RoleplayPhone:drawCallsList()
     local pw = s.w
     local ph = s.h
 
-    -- Phone shell background
+    -- Phone bezel + shell background
+    self:drawRect(px-0.009, py-0.009, pw+0.018, ph+0.018, 0.01, 0.01, 0.01, 1.0)
     self:drawRect(px, py, pw, ph, 0.06, 0.07, 0.10, 0.97)
 
     -- Header
