@@ -7,7 +7,7 @@
         Built for serious RP communities that want a real in-game economy.
     </description>
 
-    <version>0.2.0</version>
+    <version>0.2.1</version>
     <author>MRM &amp; Claude (Anthropic)</author>
     <iconFilename>textures/icon.dds</iconFilename>
 	<multiplayer supported="true"/>
