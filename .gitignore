@@ -1,0 +1,6 @@
+# Ignore compiled/temp files
+*.zip
+*.log
+*.b64
+*.tmp
+_claude/

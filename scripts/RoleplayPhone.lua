@@ -2787,8 +2787,11 @@ function RoleplayPhone:drawSettings()
     renderText(indent, cy, 0.009, "WALLPAPER")
     cy = cy - 0.028
 
-    local swatchSz  = 0.042
-    local swatchGap = 0.010
+    -- Calculate swatch size to fit all 7 within phone width
+    local numSwatches = #self.WALLPAPERS
+    local swatchGap = 0.006
+    local totalGaps = (numSwatches - 1) * swatchGap
+    local swatchSz  = (pw - (indent - px) * 2 - totalGaps) / numSwatches
     local swatchX   = indent
 
     for i, wp in ipairs(self.WALLPAPERS) do
