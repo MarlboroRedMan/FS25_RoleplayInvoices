@@ -46,7 +46,7 @@ A Farming Simulator 25 mod that adds a full-featured roleplay smartphone UI for 
 
 ## Installation
 
-1. Download `FS25_RoleplayInvoices.zip` from the [Releases](../../releases) page
+1. Download `FS25_RoleplayPhone.zip` from the [Releases](../../releases) page
 2. Place the zip file directly into your FS25 mods folder:
    - **Windows:** `Documents\My Games\FarmingSimulator2025\mods\`
 3. Enable the mod in the FS25 mod manager before loading your save
@@ -63,7 +63,9 @@ A Farming Simulator 25 mod that adds a full-featured roleplay smartphone UI for 
 | F7 | Open / Close phone |
 | F8 | Answer or hang up call (works on foot and in vehicles) |
 
-Both bindings are remappable in the FS25 key bindings menu.
+Both bindings are fully remappable in the FS25 key bindings menu under **Controls → On Foot / Vehicle**.
+
+> ⚠️ **F-key conflicts:** Some mods and FS25's developer mode use F-keys for their own functions. If you experience key conflicts, rebind the phone keys in the FS25 Controls settings to any unused key or key combination.
 
 ---
 
@@ -118,7 +120,7 @@ The phone number field is cosmetic RP flavor only — it doesn't route calls or 
 
 ## Current Version
 
-**v0.2.0** — Major update adding calls, messaging, notifications, recent calls, contact overhaul, and multiplayer fixes
+**v0.2.2** — Ultrawide display support, phone frame overlay, aspect ratio scaling for all screen resolutions
 
 ---
 
